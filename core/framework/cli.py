@@ -40,6 +40,34 @@ def main():
 
     register_testing_commands(subparsers)
 
+    # Register dashboard command
+    dashboard_parser = subparsers.add_parser("dashboard", help="Run the agent dashboard")
+    dashboard_parser.add_argument("agent_path", help="Path to agent export")
+    dashboard_parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
+    dashboard_parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
+    dashboard_parser.add_argument("--input", default="{}", help="Initial input JSON (optional)")
+
+    def run_dashboard_command(args):
+        from pathlib import Path
+        from framework.runner.runner import AgentRunner
+        from framework.dashboard import run_dashboard
+
+        agent_path = Path(args.agent_path)
+
+        # Load agent
+        print(f"Loading agent from {agent_path}...")
+        runner = AgentRunner.load(agent_path, model=args.model)
+
+        # Enable dashboard mode (forces AgentRuntime/EventBus usage)
+        if hasattr(runner, "enable_dashboard_mode"):
+            runner.enable_dashboard_mode()
+
+        # Run dashboard
+        run_dashboard(runner, host=args.host, port=args.port)
+        return 0
+
+    dashboard_parser.set_defaults(func=run_dashboard_command)
+
     args = parser.parse_args()
 
     if hasattr(args, "func"):

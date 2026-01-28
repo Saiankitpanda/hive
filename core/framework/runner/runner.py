@@ -872,6 +872,76 @@ class AgentRunner:
             missing_credentials=missing_credentials,
         )
 
+    def enable_dashboard_mode(self) -> None:
+        """
+        Enable dashboard mode by forcing AgentRuntime usage.
+
+        This allows single-entry-point agents to use the EventBus.
+        """
+        if self._agent_runtime is not None:
+            return
+
+        # If we're not already using async entry points, manufacture one
+        if not self._uses_async_entry_points:
+            from framework.runtime.execution_stream import EntryPointSpec
+
+            # Create a default entry point wrapper for the main entry node
+            default_ep = EntryPointSpec(
+                id="default",
+                name="Default Entry Point",
+                entry_node=self.graph.entry_node,
+                trigger_type="manual",
+                isolation_level="shared",
+            )
+
+            # Initialize tools/executor if not done
+            if not self._tool_registry.get_tools():
+                tools_path = self.agent_path / "tools.py"
+                if tools_path.exists():
+                    self._tool_registry.discover_from_module(tools_path)
+
+            tools = list(self._tool_registry.get_tools().values())
+            import logging
+
+            logging.getLogger(__name__).info(
+                f"Enabling dashboard with {len(tools)} tools: {[t.name for t in tools]}"
+            )
+
+            tool_executor = self._tool_registry.get_executor()
+
+            # Set up AgentRuntime
+            self._setup_agent_runtime(tools, tool_executor)
+
+            # Register the manufactured entry point
+            self._agent_runtime.register_entry_point(default_ep)
+
+            # Flag that we can now use runtime features
+            self._uses_async_entry_points = True  # Effectively true now
+
+    def subscribe_to_events(
+        self,
+        event_types: list,
+        handler: Callable,
+        filter_stream: str | None = None,
+    ) -> str:
+        """
+        Subscribe to agent events. Requires dashboard mode or multi-entry agent.
+
+        Args:
+            event_types: Types of events to receive
+            handler: Async function to call when event occurs
+            filter_stream: Only receive events from this stream
+
+        Returns:
+            Subscription ID
+        """
+        if self._agent_runtime is None:
+            raise RuntimeError("AgentRuntime not initialized. Call enable_dashboard_mode() first.")
+
+        return self._agent_runtime.subscribe_to_events(
+            event_types=event_types, handler=handler, filter_stream=filter_stream
+        )
+
     async def can_handle(
         self, request: dict, llm: LLMProvider | None = None
     ) -> "CapabilityResponse":

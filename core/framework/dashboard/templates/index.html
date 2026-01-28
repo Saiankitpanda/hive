@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hive Dashboard - {{ agent_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+        window.mermaid = mermaid;
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .mermaid {
+            background: transparent;
+        }
+
+        .log-entry {
+            font-family: monospace;
+            border-left: 2px solid #334155;
+            padding-left: 8px;
+            margin-bottom: 4px;
+        }
+
+        .log-error {
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+
+        .log-success {
+            border-color: #22c55e;
+            color: #86efac;
+        }
+
+        .log-info {
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+                Hive Dashboard</h1>
+            <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">{{ agent_name }}</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <div id="status-indicator" class="flex items-center gap-2 text-sm text-slate-400">
+                <span class="w-2 h-2 rounded-full bg-slate-600"></span> Disconnected
+            </div>
+            <button id="run-btn"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors shadow">
+                Run Agent
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Graph View -->
+        <div class="w-2/3 flex flex-col border-r border-slate-800 bg-slate-900/50">
+            <div class="p-3 border-b border-slate-800 bg-slate-900 font-semibold text-sm text-slate-300">Agent Graph
+            </div>
+            <div id="graph-container" class="flex-1 overflow-auto p-4 flex items-center justify-center">
+                <div class="animate-pulse text-slate-600">Loading graph...</div>
+            </div>
+        </div>
+
+        <!-- Logs/Events View -->
+        <div class="w-1/3 flex flex-col bg-slate-900">
+            <div
+                class="p-3 border-b border-slate-800 bg-slate-900 font-semibold text-sm text-slate-300 flex justify-between">
+                <span>Execution Log</span>
+                <span id="log-count" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-500">0 events</span>
+            </div>
+            <div id="logs-container" class="flex-1 overflow-auto p-3 text-sm space-y-2 font-mono">
+                <!-- Logs will appear here -->
+                <div class="text-slate-600 italic text-xs text-center mt-10">Waiting for events...</div>
+            </div>
+
+            <!-- Input Area (Hidden by default, shown when run clicked) -->
+            <div id="input-area" class="p-4 border-t border-slate-800 bg-slate-800/50 hidden">
+                <label class="block text-xs font-semibold mb-2 text-slate-400">Input JSON</label>
+                <textarea id="input-json"
+                    class="w-full h-24 bg-slate-900 border border-slate-700 rounded p-2 text-xs font-mono focus:border-blue-500 outline-none text-slate-200">{}</textarea>
+                <div class="flex justify-end mt-2 gap-2">
+                    <button id="cancel-run" class="px-3 py-1 text-slate-400 hover:text-white text-xs">Cancel</button>
+                    <button id="confirm-run"
+                        class="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded text-xs font-bold">Start
+                        Execution</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- State ---
+        const state = {
+            socket: null,
+            graphData: null
+        };
+
+        // --- Elements ---
+        const els = {
+            status: document.getElementById('status-indicator'),
+            graph: document.getElementById('graph-container'),
+            logs: document.getElementById('logs-container'),
+            logCount: document.getElementById('log-count'),
+            runBtn: document.getElementById('run-btn'),
+            inputArea: document.getElementById('input-area'),
+            inputJson: document.getElementById('input-json'),
+            confirmRun: document.getElementById('confirm-run'),
+            cancelRun: document.getElementById('cancel-run'),
+        };
+
+        // --- WebSocket ---
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+            state.socket = new WebSocket(wsUrl);
+
+            state.socket.onopen = () => {
+                updateStatus(true);
+                addLog('System', 'Connected to dashboard server', 'info');
+            };
+
+            state.socket.onclose = () => {
+                updateStatus(false);
+                addLog('System', 'Disconnected from server', 'error');
+                setTimeout(connect, 2000); // Reconnect
+            };
+
+            state.socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleEvent(data);
+            };
+        }
+
+        function updateStatus(connected) {
+            const dot = els.status.querySelector('span');
+            if (connected) {
+                dot.className = 'w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
+                els.status.innerHTML = '';
+                els.status.appendChild(dot);
+                els.status.appendChild(document.createTextNode(' Live'));
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                els.status.innerHTML = '';
+                els.status.appendChild(dot);
+                els.status.appendChild(document.createTextNode(' Disconnected'));
+            }
+        }
+
+        // --- Graph Rendering ---
+        async function loadGraph() {
+            try {
+                const res = await fetch('/api/graph');
+                const data = await res.json();
+                state.graphData = data;
+                renderGraph(data);
+            } catch (e) {
+                els.graph.innerHTML = `<div class="text-red-400">Failed to load graph: ${e.message}</div>`;
+            }
+        }
+
+        function renderGraph(data) {
+            // Build Mermaid diagram
+            let mm = 'graph TD\n';
+
+            // Add nodes
+            data.nodes.forEach(node => {
+                // Style based on type
+                let shape = 'rect'; // Default
+                if (node.type === 'router') shape = 'rhombus';
+                else if (node.type === 'human_input') shape = 'hexagon';
+
+                // Sanitized name
+                const id = node.id.replace(/[^a-zA-Z0-9]/g, '_');
+                const label = (node.name || node.id).replace(/"/g, '#quot;');
+
+                let def = `${id}["${label}"]`;
+                if (node.type === 'router') def = `${id}{"${label}"}`;
+
+                mm += `    ${def}\n`;
+
+                // Add click event class if needed
+                mm += `    class ${id} node-basic\n`;
+            });
+
+            // Add edges
+            data.edges.forEach(edge => {
+                const s = edge.source.replace(/[^a-zA-Z0-9]/g, '_');
+                const t = edge.target.replace(/[^a-zA-Z0-9]/g, '_');
+                const label = edge.condition === 'always' ? '' : `|${edge.condition}|`;
+                mm += `    ${s} -->${label} ${t}\n`;
+            });
+
+            // Render
+            els.graph.innerHTML = `<pre class="mermaid">${mm}</pre>`;
+
+            const runMermaid = async () => {
+                try {
+                    await window.mermaid.run({
+                        nodes: document.querySelectorAll('.mermaid')
+                    });
+                } catch (err) {
+                    console.error('Mermaid render error:', err);
+                }
+            };
+
+            if (window.mermaid) {
+                runMermaid();
+            } else {
+                // Poll for mermaid
+                const checkInterval = setInterval(() => {
+                    if (window.mermaid) {
+                        clearInterval(checkInterval);
+                        runMermaid();
+                    }
+                }, 100);
+            }
+        }
+
+        // --- Logging ---
+        function handleEvent(event) {
+            // Visualize active node on graph
+            if (event.type === 'execution_started' || event.type === 'node_start') {
+                // Highlight node (requires parsing data to find node ID)
+                // For now just log
+            }
+
+            let msg = '';
+            let type = 'info';
+
+            switch (event.type) {
+                case 'execution_started':
+                    msg = `Started execution ${event.execution_id}`;
+                    break;
+                case 'execution_completed':
+                    msg = `Completed execution ${event.execution_id}`;
+                    type = 'success';
+                    break;
+                case 'execution_failed':
+                    msg = `Failed execution ${event.execution_id}: ${event.data.error}`;
+                    type = 'error';
+                    break;
+                case 'state_changed':
+                    msg = `State change: ${event.data.key} = ...`;
+                    break;
+                default:
+                    msg = `${event.type}`;
+            }
+
+            if (event.data && Object.keys(event.data).length > 0) {
+                // Add details (collapsed or truncated)
+            }
+
+            addLog(event.type, msg, type, event);
+        }
+
+        function addLog(category, message, level = 'info', rawEvent = null) {
+            const d = new Date();
+            const time = d.toLocaleTimeString();
+
+            const entry = document.createElement('div');
+            entry.className = `log-entry text-xs py-1 hover:bg-slate-800/50 transition-colors log-${level}`;
+
+            const header = document.createElement('div');
+            header.className = "flex gap-2 items-center opacity-75 mb-0.5";
+            header.innerHTML = `<span class="text-[10px] text-slate-500">${time}</span> <span class="uppercase font-bold tracking-wider text-[10px]">${category}</span>`;
+
+            const content = document.createElement('div');
+            content.className = "text-slate-200 whitespace-pre-wrap";
+            content.textContent = message;
+
+            entry.appendChild(header);
+            entry.appendChild(content);
+
+            // If raw event data, allow expanding
+            if (rawEvent && rawEvent.data) {
+                const details = document.createElement('details');
+                details.className = "mt-1";
+                const sum = document.createElement('summary');
+                sum.className = "cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none";
+                sum.textContent = "View Data";
+
+                const pre = document.createElement('pre');
+                pre.className = "mt-1 bg-slate-950 p-2 rounded overflow-auto max-h-40 text-[10px] text-slate-400";
+                pre.textContent = JSON.stringify(rawEvent.data, null, 2);
+
+                details.appendChild(sum);
+                details.appendChild(pre);
+                entry.appendChild(details);
+            }
+
+            els.logs.prepend(entry); // Newest top
+
+            // Update count
+            els.logCount.textContent = `${els.logs.children.length} events`;
+        }
+
+        // --- Interaction ---
+        els.runBtn.addEventListener('click', () => {
+            els.inputArea.classList.remove('hidden');
+            els.inputJson.focus();
+        });
+
+        els.cancelRun.addEventListener('click', () => {
+            els.inputArea.classList.add('hidden');
+        });
+
+        els.confirmRun.addEventListener('click', async () => {
+            const jsonStr = els.inputJson.value;
+            let inputData = {};
+            try {
+                inputData = JSON.parse(jsonStr);
+            } catch (e) {
+                alert('Invalid JSON');
+                return;
+            }
+
+            addLog('System', 'Sending run request...', 'info');
+            els.inputArea.classList.add('hidden');
+
+            try {
+                const res = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(inputData)
+                });
+                const data = await res.json();
+
+                if (data.status === 'started') {
+                    addLog('System', `Run queued: ${data.execution_id}`, 'success');
+                } else {
+                    addLog('System', `Failed to start: ${data.message}`, 'error');
+                }
+            } catch (e) {
+                addLog('System', `Network error: ${e.message}`, 'error');
+            }
+        });
+
+        // --- Init ---
+        connect();
+        loadGraph();
+    </script>
+</body>
+
+</html>
