@@ -1,0 +1,148 @@
+{
+    "graph": {
+        "id": "customer-support-agent",
+        "name": "Customer Support Agent",
+        "description": "An agent that triages and resolves customer support tickets.",
+        "nodes": [
+            {
+                "id": "triage",
+                "name": "Triage Ticket",
+                "description": "Analyze the ticket to determine category and sentiment.",
+                "node_type": "router",
+                "routes": {
+                    "technical": "research_technical",
+                    "billing": "check_billing",
+                    "other": "draft_response"
+                },
+                "input_keys": [
+                    "ticket"
+                ],
+                "output_keys": [
+                    "category",
+                    "sentiment"
+                ]
+            },
+            {
+                "id": "research_technical",
+                "name": "Research Technical Issue",
+                "description": "Search the knowledge base for technical solutions.",
+                "node_type": "llm_tool_use",
+                "tools": [
+                    "search_knowledge_base"
+                ],
+                "input_keys": [
+                    "ticket"
+                ],
+                "output_keys": [
+                    "findings"
+                ]
+            },
+            {
+                "id": "check_billing",
+                "name": "Check Billing Status",
+                "description": "Check the user's subscription status.",
+                "node_type": "llm_tool_use",
+                "tools": [
+                    "check_subscription_status"
+                ],
+                "input_keys": [
+                    "ticket"
+                ],
+                "output_keys": [
+                    "findings"
+                ]
+            },
+            {
+                "id": "draft_response",
+                "name": "Draft Response",
+                "description": "Draft a polite and helpful response based on findings.",
+                "node_type": "llm_generate",
+                "input_keys": [
+                    "ticket",
+                    "findings",
+                    "category"
+                ],
+                "output_keys": [
+                    "draft_body"
+                ]
+            },
+            {
+                "id": "human_review",
+                "name": "Human Review",
+                "description": "Review the drafted response before sending.",
+                "node_type": "human_input",
+                "input_keys": [
+                    "draft_body"
+                ],
+                "output_keys": [
+                    "approved",
+                    "feedback"
+                ]
+            },
+            {
+                "id": "send_response",
+                "name": "Send Response",
+                "description": "Send the final email to the customer.",
+                "node_type": "llm_tool_use",
+                "tools": [
+                    "send_email"
+                ],
+                "input_keys": [
+                    "draft_body",
+                    "ticket"
+                ],
+                "output_keys": [
+                    "email_status"
+                ]
+            }
+        ],
+        "edges": [
+            {
+                "id": "e1-tech",
+                "source": "research_technical",
+                "target": "draft_response",
+                "condition": "on_success"
+            },
+            {
+                "id": "e1-bill",
+                "source": "check_billing",
+                "target": "draft_response",
+                "condition": "on_success"
+            },
+            {
+                "id": "e2",
+                "source": "draft_response",
+                "target": "human_review",
+                "condition": "on_success"
+            },
+            {
+                "id": "e3",
+                "source": "human_review",
+                "target": "send_response",
+                "condition": "on_success",
+                "condition_expr": "approved == True"
+            }
+        ],
+        "entry_node": "triage",
+        "terminal_nodes": [
+            "send_response"
+        ],
+        "pause_nodes": [
+            "human_review"
+        ],
+        "max_steps": 20
+    },
+    "goal": {
+        "id": "resolve-ticket",
+        "name": "Resolve Customer Ticket",
+        "description": "Successfully resolve the customer's issue with a high-quality response.",
+        "success_criteria": [
+            {
+                "id": "sc1",
+                "description": "Email sent to customer",
+                "metric": "email_status",
+                "target": "sent"
+            }
+        ]
+    }
+}

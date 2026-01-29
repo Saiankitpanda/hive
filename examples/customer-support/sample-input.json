@@ -1,0 +1,33 @@
+{
+    "ticket": {
+        "id": "TCK-10492",
+        "customer": {
+            "id": "CUST-7712",
+            "name": "Rohan",
+            "plan": "Pro",
+            "region": "IN"
+        },
+        "subject": "My agent stopped mid-run",
+        "body": "It ran 3 steps then failed with a tool timeout. How do I recover the run and prevent this again?",
+        "priority": "P1",
+        "channel": "email",
+        "created_at": "2026-01-28T15:10:00+05:30"
+    },
+    "constraints": {
+        "max_budget_usd": 0.25,
+        "require_human_approval_for": [
+            "refund",
+            "data_delete",
+            "credential_reset"
+        ]
+    },
+    "desired_output": {
+        "format": "support_reply",
+        "tone": "clear_and_confident",
+        "include": [
+            "root_cause_guess",
+            "recovery_steps",
+            "prevention_steps"
+        ]
+    }
+}

@@ -143,3 +143,9 @@ This prevents the "Brittle Chain" problem where a single missing path breaks the
 *   **rate_limiting**: Use Aden's built-in throttles to prevent the agent from spamming your CRM.
 *   **pii_masking**: Enable the PII middleware to scrub sensitive data before it hits the LLM.
 *   **testing**: Use `claude> /testing-agent` to run simulated ticket batches before analyzing the real queue.
+
+## 8. Production Links
+
+Ready to deploy this agent? Check out our production guides:
+- [Production Deployment Guide](../deployment/production-guide.md)
+- [Cost & Scaling Guide](../deployment/cost-and-scaling.md)

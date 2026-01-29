@@ -1,0 +1,4 @@
+# Core framework dependencies are expected to be installed
+# This file is for additional dependencies specific to this example
+litellm
+pydantic
