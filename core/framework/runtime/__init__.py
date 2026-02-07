@@ -118,3 +118,84 @@ try:
     )
 except ImportError:
     pass
+
+# Caching
+try:
+    from framework.runtime.caching import (  # noqa: F401
+        LLMCache,
+        CacheEntry,
+        CacheStats,
+        ResponseCache,
+        create_llm_cache,
+    )
+
+    __all__.extend(["LLMCache", "CacheEntry", "CacheStats", "ResponseCache", "create_llm_cache"])
+except ImportError:
+    pass
+
+# Configuration
+try:
+    from framework.runtime.config import (  # noqa: F401
+        AgentConfig,
+        LLMConfig,
+        RuntimeConfig,
+        GuardrailsConfig,
+        ConfigManager,
+        get_config,
+        load_config,
+    )
+
+    __all__.extend(
+        [
+            "AgentConfig",
+            "LLMConfig",
+            "RuntimeConfig",
+            "GuardrailsConfig",
+            "ConfigManager",
+            "get_config",
+            "load_config",
+        ]
+    )
+except ImportError:
+    pass
+
+# Testing utilities
+try:
+    from framework.runtime.testing import (  # noqa: F401
+        MockLLMProvider,
+        MockResponse,
+        RecordingProvider,
+        PlaybackProvider,
+        TestFixture,
+        FixtureBuilder,
+        AgentAssertions,
+        AgentTestRunner,
+    )
+
+    __all__.extend(
+        [
+            "MockLLMProvider",
+            "MockResponse",
+            "RecordingProvider",
+            "PlaybackProvider",
+            "TestFixture",
+            "FixtureBuilder",
+            "AgentAssertions",
+            "AgentTestRunner",
+        ]
+    )
+except ImportError:
+    pass
+
+# State management
+try:
+    from framework.runtime.state import (  # noqa: F401
+        StateManager,
+        StateSnapshot,
+        StateTransaction,
+        create_state_manager,
+    )
+
+    __all__.extend(["StateManager", "StateSnapshot", "StateTransaction", "create_state_manager"])
+except ImportError:
+    pass
