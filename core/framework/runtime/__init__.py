@@ -199,3 +199,181 @@ try:
     __all__.extend(["StateManager", "StateSnapshot", "StateTransaction", "create_state_manager"])
 except ImportError:
     pass
+
+# Retry utilities
+try:
+    from framework.runtime.retry import (  # noqa: F401
+        RetryConfig,
+        RetryStrategy,
+        RetryError,
+        CircuitBreaker,
+        CircuitBreakerOpen,
+        retry,
+        retry_async,
+        with_timeout,
+    )
+
+    __all__.extend(
+        [
+            "RetryConfig",
+            "RetryStrategy",
+            "RetryError",
+            "CircuitBreaker",
+            "CircuitBreakerOpen",
+            "retry",
+            "retry_async",
+            "with_timeout",
+        ]
+    )
+except ImportError:
+    pass
+
+# Rate limiting
+try:
+    from framework.runtime.rate_limit import (  # noqa: F401
+        TokenBucket,
+        SlidingWindowLimiter,
+        KeyedRateLimiter,
+        AdaptiveRateLimiter,
+        RateLimitConfig,
+        rate_limit,
+        create_rate_limiter,
+    )
+
+    __all__.extend(
+        [
+            "TokenBucket",
+            "SlidingWindowLimiter",
+            "KeyedRateLimiter",
+            "AdaptiveRateLimiter",
+            "RateLimitConfig",
+            "rate_limit",
+            "create_rate_limiter",
+        ]
+    )
+except ImportError:
+    pass
+
+# Telemetry
+try:
+    from framework.runtime.telemetry import (  # noqa: F401
+        MetricsCollector,
+        Tracer,
+        Span,
+        Metric,
+        MetricType,
+        trace,
+        timed,
+        get_metrics,
+        get_tracer,
+    )
+
+    __all__.extend(
+        [
+            "MetricsCollector",
+            "Tracer",
+            "Span",
+            "Metric",
+            "MetricType",
+            "trace",
+            "timed",
+            "get_metrics",
+            "get_tracer",
+        ]
+    )
+except ImportError:
+    pass
+
+# Security
+try:
+    from framework.runtime.security import (  # noqa: F401
+        InputValidator,
+        SecretManager,
+        PermissionManager,
+        SecurityAuditor,
+        SecurityContext,
+        Permission,
+        SecurityLevel,
+        hash_password,
+        verify_password,
+        generate_csrf_token,
+        get_validator,
+        get_secret_manager,
+        get_permission_manager,
+        get_security_auditor,
+    )
+
+    __all__.extend(
+        [
+            "InputValidator",
+            "SecretManager",
+            "PermissionManager",
+            "SecurityAuditor",
+            "SecurityContext",
+            "Permission",
+            "SecurityLevel",
+            "hash_password",
+            "verify_password",
+            "generate_csrf_token",
+            "get_validator",
+            "get_secret_manager",
+            "get_permission_manager",
+            "get_security_auditor",
+        ]
+    )
+except ImportError:
+    pass
+
+# Plugins
+try:
+    from framework.runtime.plugins import (  # noqa: F401
+        PluginManager,
+        HookManager,
+        Plugin,
+        PluginMetadata,
+        PluginState,
+        create_plugin_template,
+    )
+
+    __all__.extend(
+        [
+            "PluginManager",
+            "HookManager",
+            "Plugin",
+            "PluginMetadata",
+            "PluginState",
+            "create_plugin_template",
+        ]
+    )
+except ImportError:
+    pass
+
+# Validation
+try:
+    from framework.runtime.validation import (  # noqa: F401
+        Validator,
+        ValidationResult,
+        ValidationError,
+        ValidationErrorType,
+        ValidationException,
+        validate_dict_schema,
+        assert_type,
+        assert_not_none,
+        assert_not_empty,
+    )
+
+    __all__.extend(
+        [
+            "Validator",
+            "ValidationResult",
+            "ValidationError",
+            "ValidationErrorType",
+            "ValidationException",
+            "validate_dict_schema",
+            "assert_type",
+            "assert_not_none",
+            "assert_not_empty",
+        ]
+    )
+except ImportError:
+    pass
