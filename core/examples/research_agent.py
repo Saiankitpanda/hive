@@ -12,8 +12,8 @@ From ROADMAP: Sample Agents > Research Agent
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
 from enum import Enum
+from typing import Any
 
 
 class SourceType(Enum):
@@ -131,7 +131,9 @@ class ResearchAgent:
     # Sample knowledge base for demo
     KNOWLEDGE_BASE = {
         "ai": {
-            "summary": "Artificial Intelligence is the simulation of human intelligence in machines.",
+            "summary": (
+                "Artificial Intelligence is the simulation of human intelligence in machines."
+            ),
             "key_points": [
                 "Machine learning enables systems to learn from data",
                 "Deep learning uses neural networks",
@@ -413,7 +415,7 @@ Make it informative and well-structured."""
         relevance_confidence = avg_relevance * 0.3
 
         # Diversity confidence
-        source_types = set(s.source_type for s in sources)
+        source_types = {s.source_type for s in sources}
         diversity_confidence = min(len(source_types) / 3, 1.0) * 0.2
 
         return source_confidence + relevance_confidence + diversity_confidence
@@ -439,7 +441,7 @@ if __name__ == "__main__":
     print(f"Query: {result.query}")
     print(f"Confidence: {result.confidence:.0%}")
     print(f"\nSummary:\n{result.summary}")
-    print(f"\nKey Findings:")
+    print("\nKey Findings:")
     for finding in result.key_findings:
         print(f"  - {finding}")
     print(f"\nSources: {len(result.sources)}")

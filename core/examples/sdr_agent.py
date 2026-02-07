@@ -152,11 +152,13 @@ class SDRAgent:
     TEMPLATES = {
         EmailType.COLD_OUTREACH: """Hi {first_name},
 
-I noticed that {company} is {observation}. Many {industry} companies like yours are looking for ways to {pain_point}.
+I noticed that {company} is {observation}. Many {industry} companies \
+like yours are looking for ways to {pain_point}.
 
 {product_name} helps teams like yours {value_proposition}.
 
-Would you be open to a quick 15-minute call this week to explore if this could be valuable for {company}?
+Would you be open to a quick 15-minute call this week to explore if \
+this could be valuable for {company}?
 
 Best regards,
 {sender_name}""",
@@ -172,7 +174,8 @@ Best,
 {sender_name}""",
         EmailType.VALUE_PROPOSITION: """Hi {first_name},
 
-I've been thinking about {company}'s goals in {industry}, and I believe {product_name} could help you:
+I've been thinking about {company}'s goals in {industry}, and I believe \
+{product_name} could help you:
 
 • {benefit_1}
 • {benefit_2}
@@ -232,7 +235,7 @@ Thanks,
 
     def get_leads_by_status(self, status: LeadStatus) -> list[Lead]:
         """Get leads by status."""
-        return [l for l in self._leads.values() if l.status == status]
+        return [lead for lead in self._leads.values() if lead.status == status]
 
     def update_lead_status(self, lead_id: str, status: LeadStatus) -> bool:
         """Update lead status."""
@@ -442,7 +445,7 @@ Make it personalized, professional, and concise. No more than 150 words."""
             "total_leads": total,
             "by_status": stats,
             "qualification_rate": round(qualified / total * 100, 1) if total else 0,
-            "avg_score": sum(l.score for l in self._leads.values()) / total if total else 0,
+            "avg_score": sum(lead.score for lead in self._leads.values()) / total if total else 0,
         }
 
 

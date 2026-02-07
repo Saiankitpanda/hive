@@ -12,10 +12,10 @@ From ROADMAP: Testing framework for agents
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from collections.abc import Callable
 
 
 @dataclass
@@ -479,7 +479,6 @@ class AgentTestRunner:
     def print_results(self, results: list[TestResult]) -> None:
         """Print test results."""
         passed = sum(1 for r in results if r.passed)
-        failed = len(results) - passed
 
         print(f"\n{'=' * 50}")
         print(f"Test Results: {passed}/{len(results)} passed")

@@ -10,7 +10,6 @@ Provides:
 From ROADMAP Phase 2: Streaming mode support
 """
 
-import asyncio
 import json
 import time
 from collections.abc import AsyncIterator, Callable
@@ -393,7 +392,7 @@ def create_streaming_response(
     try:
         from fastapi.responses import StreamingResponse
     except ImportError:
-        raise ImportError("FastAPI required for streaming response")
+        raise ImportError("FastAPI required for streaming response") from None
 
     async def generate():
         async for event in stream_handler.stream_tokens(token_iterator):
