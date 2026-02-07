@@ -12,9 +12,35 @@
         window.mermaid = mermaid;
     </script>
     <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-orange: #f97316;
+        }
+
         body {
-            background-color: #0f172a;
-            color: #e2e8f0;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        body.light-theme {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #e2e8f0;
+            --bg-tertiary: #cbd5e1;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+        }
+
+        body.light-theme .mermaid {
+            filter: invert(1) hue-rotate(180deg);
         }
 
         .mermaid {
@@ -23,23 +49,108 @@
 
         .log-entry {
             font-family: monospace;
-            border-left: 2px solid #334155;
-            padding-left: 8px;
-            margin-bottom: 4px;
+            border-left: 3px solid var(--bg-tertiary);
+            padding-left: 12px;
+            margin-bottom: 8px;
+            animation: slideIn 0.2s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 5px var(--accent-blue); }
+            50% { box-shadow: 0 0 20px var(--accent-blue), 0 0 30px var(--accent-purple); }
         }
 
         .log-error {
-            border-color: #ef4444;
+            border-color: var(--accent-red);
             color: #fca5a5;
         }
 
         .log-success {
-            border-color: #22c55e;
+            border-color: var(--accent-green);
             color: #86efac;
         }
 
         .log-info {
-            border-color: #3b82f6;
+            border-color: var(--accent-blue);
+        }
+
+        .log-warning {
+            border-color: var(--accent-orange);
+            color: #fdba74;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border-radius: 12px;
+            padding: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-family: monospace;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            border: 1px solid var(--text-secondary);
+        }
+
+        .running-indicator {
+            animation: pulse-glow 2s infinite;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
         }
     </style>
 </head>
@@ -48,64 +159,142 @@
     <!-- Header -->
     <header class="bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center shadow-lg">
         <div class="flex items-center gap-3">
-            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-                Hive Dashboard</h1>
-            <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">{{ agent_name }}</span>
+            <h1 class="text-xl font-bold gradient-text">🐝 Hive Dashboard</h1>
+            <span class="px-3 py-1 bg-slate-800 rounded-full text-xs text-slate-400 font-medium">{{ agent_name }}</span>
         </div>
         <div class="flex items-center gap-4">
+            <!-- Stats Summary -->
+            <div class="hidden md:flex items-center gap-3 text-xs">
+                <span class="flex items-center gap-1 text-green-400">
+                    <span id="success-count">0</span> ✓
+                </span>
+                <span class="flex items-center gap-1 text-red-400">
+                    <span id="error-count">0</span> ✗
+                </span>
+            </div>
+
+            <!-- Theme Toggle -->
+            <button id="theme-toggle" class="theme-toggle" title="Toggle theme (Ctrl+T)">
+                <span id="theme-icon">🌙</span>
+            </button>
+
+            <!-- Status Indicator -->
             <div id="status-indicator" class="flex items-center gap-2 text-sm text-slate-400">
                 <span class="w-2 h-2 rounded-full bg-slate-600"></span> Disconnected
             </div>
+
+            <!-- Run Button -->
             <button id="run-btn"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors shadow">
-                Run Agent
+                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-blue-500/25"
+                title="Run Agent (Ctrl+R)">
+                ▶ Run Agent
             </button>
         </div>
     </header>
+
+    <!-- Keyboard Shortcuts Help -->
+    <div id="shortcuts-help" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-slate-800 rounded-xl p-6 shadow-2xl max-w-sm">
+            <h3 class="text-lg font-bold mb-4 gradient-text">⌨️ Keyboard Shortcuts</h3>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between"><span>Run Agent</span><span class="kbd">Ctrl+R</span></div>
+                <div class="flex justify-between"><span>Toggle Theme</span><span class="kbd">Ctrl+T</span></div>
+                <div class="flex justify-between"><span>Clear Logs</span><span class="kbd">Ctrl+L</span></div>
+                <div class="flex justify-between"><span>Show Shortcuts</span><span class="kbd">?</span></div>
+                <div class="flex justify-between"><span>Close Dialog</span><span class="kbd">Esc</span></div>
+            </div>
+            <button onclick="document.getElementById('shortcuts-help').classList.add('hidden')"
+                class="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">Close</button>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <main class="flex-1 flex overflow-hidden">
         <!-- Graph View -->
         <div class="w-2/3 flex flex-col border-r border-slate-800 bg-slate-900/50">
-            <div class="p-3 border-b border-slate-800 bg-slate-900 font-semibold text-sm text-slate-300">Agent Graph
+            <div class="p-3 border-b border-slate-800 bg-slate-900 font-semibold text-sm text-slate-300 flex justify-between items-center">
+                <span>📊 Agent Graph</span>
+                <span class="text-xs text-slate-500">Nodes visualized with Mermaid</span>
             </div>
             <div id="graph-container" class="flex-1 overflow-auto p-4 flex items-center justify-center">
                 <div class="animate-pulse text-slate-600">Loading graph...</div>
             </div>
         </div>
 
-        <!-- Logs/Events View -->
+        <!-- Right Panel -->
         <div class="w-1/3 flex flex-col bg-slate-900">
-            <div
-                class="p-3 border-b border-slate-800 bg-slate-900 font-semibold text-sm text-slate-300 flex justify-between">
-                <span>Execution Log</span>
-                <span id="log-count" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-500">0 events</span>
-            </div>
-            <div id="logs-container" class="flex-1 overflow-auto p-3 text-sm space-y-2 font-mono">
-                <!-- Logs will appear here -->
-                <div class="text-slate-600 italic text-xs text-center mt-10">Waiting for events...</div>
+            <!-- Stats Panel -->
+            <div class="p-3 border-b border-slate-800 bg-slate-900/80">
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="stats-card text-center">
+                        <div id="total-executions" class="text-2xl font-bold text-blue-400">0</div>
+                        <div class="text-[10px] text-slate-500 uppercase tracking-wide">Runs</div>
+                    </div>
+                    <div class="stats-card text-center">
+                        <div id="success-rate" class="text-2xl font-bold text-green-400">--</div>
+                        <div class="text-[10px] text-slate-500 uppercase tracking-wide">Success</div>
+                    </div>
+                    <div class="stats-card text-center">
+                        <div id="avg-duration" class="text-2xl font-bold text-purple-400">--</div>
+                        <div class="text-[10px] text-slate-500 uppercase tracking-wide">Avg Time</div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Input Area (Hidden by default, shown when run clicked) -->
+            <!-- Logs Header -->
+            <div class="p-3 border-b border-slate-800 bg-slate-900 font-semibold text-sm text-slate-300 flex justify-between">
+                <span>📝 Execution Log</span>
+                <div class="flex items-center gap-2">
+                    <button id="clear-logs" class="text-xs text-slate-500 hover:text-slate-300" title="Clear logs (Ctrl+L)">Clear</button>
+                    <span id="log-count" class="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-500">0 events</span>
+                </div>
+            </div>
+
+            <!-- Logs Container -->
+            <div id="logs-container" class="flex-1 overflow-auto p-3 text-sm space-y-2 font-mono">
+                <div class="text-slate-600 italic text-xs text-center mt-10">
+                    <p>Waiting for events...</p>
+                    <p class="mt-2 text-slate-700">Press <span class="kbd">?</span> for shortcuts</p>
+                </div>
+            </div>
+
+            <!-- Input Area -->
             <div id="input-area" class="p-4 border-t border-slate-800 bg-slate-800/50 hidden">
                 <label class="block text-xs font-semibold mb-2 text-slate-400">Input JSON</label>
                 <textarea id="input-json"
-                    class="w-full h-24 bg-slate-900 border border-slate-700 rounded p-2 text-xs font-mono focus:border-blue-500 outline-none text-slate-200">{}</textarea>
-                <div class="flex justify-end mt-2 gap-2">
-                    <button id="cancel-run" class="px-3 py-1 text-slate-400 hover:text-white text-xs">Cancel</button>
+                    class="w-full h-24 bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-200 resize-none"
+                    placeholder='{"key": "value"}'>{}</textarea>
+                <div class="flex justify-end mt-3 gap-2">
+                    <button id="cancel-run" class="px-3 py-1.5 text-slate-400 hover:text-white text-xs rounded-lg hover:bg-slate-700">
+                        Cancel <span class="kbd">Esc</span>
+                    </button>
                     <button id="confirm-run"
-                        class="px-3 py-1 bg-green-600 hover:bg-green-500 text-white rounded text-xs font-bold">Start
-                        Execution</button>
+                        class="px-4 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg text-xs font-bold shadow-lg">
+                        🚀 Start Execution
+                    </button>
                 </div>
             </div>
         </div>
     </main>
 
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-2 text-center text-xs text-slate-600">
+        Hive Dashboard v1.1.0 • Press <span class="kbd">?</span> for shortcuts •
+        <a href="https://github.com/adenhq/hive" target="_blank" class="text-blue-500 hover:text-blue-400">GitHub</a>
+    </footer>
+
     <script>
         // --- State ---
         const state = {
             socket: null,
-            graphData: null
+            graphData: null,
+            stats: {
+                total: 0,
+                success: 0,
+                failed: 0,
+                durations: []
+            },
+            isDarkTheme: true
         };
 
         // --- Elements ---
@@ -119,7 +308,47 @@
             inputJson: document.getElementById('input-json'),
             confirmRun: document.getElementById('confirm-run'),
             cancelRun: document.getElementById('cancel-run'),
+            themeToggle: document.getElementById('theme-toggle'),
+            themeIcon: document.getElementById('theme-icon'),
+            clearLogs: document.getElementById('clear-logs'),
+            shortcutsHelp: document.getElementById('shortcuts-help'),
+            // Stats
+            totalExecutions: document.getElementById('total-executions'),
+            successRate: document.getElementById('success-rate'),
+            avgDuration: document.getElementById('avg-duration'),
+            successCount: document.getElementById('success-count'),
+            errorCount: document.getElementById('error-count')
         };
+
+        // --- Theme ---
+        function toggleTheme() {
+            state.isDarkTheme = !state.isDarkTheme;
+            document.body.classList.toggle('light-theme', !state.isDarkTheme);
+            els.themeIcon.textContent = state.isDarkTheme ? '🌙' : '☀️';
+            localStorage.setItem('hive-theme', state.isDarkTheme ? 'dark' : 'light');
+        }
+
+        // Load saved theme
+        if (localStorage.getItem('hive-theme') === 'light') {
+            toggleTheme();
+        }
+
+        // --- Stats Update ---
+        function updateStats() {
+            els.totalExecutions.textContent = state.stats.total;
+            els.successCount.textContent = state.stats.success;
+            els.errorCount.textContent = state.stats.failed;
+
+            if (state.stats.total > 0) {
+                const rate = Math.round((state.stats.success / state.stats.total) * 100);
+                els.successRate.textContent = rate + '%';
+            }
+
+            if (state.stats.durations.length > 0) {
+                const avg = state.stats.durations.reduce((a, b) => a + b, 0) / state.stats.durations.length;
+                els.avgDuration.textContent = avg < 1000 ? Math.round(avg) + 'ms' : (avg / 1000).toFixed(1) + 's';
+            }
+        }
 
         // --- WebSocket ---
         function connect() {
@@ -130,13 +359,13 @@
 
             state.socket.onopen = () => {
                 updateStatus(true);
-                addLog('System', 'Connected to dashboard server', 'info');
+                addLog('System', '✅ Connected to dashboard server', 'success');
             };
 
             state.socket.onclose = () => {
                 updateStatus(false);
-                addLog('System', 'Disconnected from server', 'error');
-                setTimeout(connect, 2000); // Reconnect
+                addLog('System', '❌ Disconnected from server', 'error');
+                setTimeout(connect, 2000);
             };
 
             state.socket.onmessage = (event) => {
@@ -153,7 +382,7 @@
                 els.status.appendChild(dot);
                 els.status.appendChild(document.createTextNode(' Live'));
             } else {
-                dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                dot.className = 'w-2 h-2 rounded-full bg-red-500 animate-pulse';
                 els.status.innerHTML = '';
                 els.status.appendChild(dot);
                 els.status.appendChild(document.createTextNode(' Disconnected'));
@@ -168,31 +397,23 @@
                 state.graphData = data;
                 renderGraph(data);
             } catch (e) {
-                els.graph.innerHTML = `<div class="text-red-400">Failed to load graph: ${e.message}</div>`;
+                els.graph.innerHTML = `<div class="text-red-400">❌ Failed to load graph: ${e.message}</div>`;
             }
         }
 
         function renderGraph(data) {
-            // Build Mermaid diagram
             let mm = 'graph TD\n';
 
-            // Add nodes
+            // Add nodes with styling
             data.nodes.forEach(node => {
-                // Style based on type
-                let shape = 'rect'; // Default
-                if (node.type === 'router') shape = 'rhombus';
-                else if (node.type === 'human_input') shape = 'hexagon';
-
-                // Sanitized name
                 const id = node.id.replace(/[^a-zA-Z0-9]/g, '_');
                 const label = (node.name || node.id).replace(/"/g, '#quot;');
 
                 let def = `${id}["${label}"]`;
                 if (node.type === 'router') def = `${id}{"${label}"}`;
+                else if (node.type === 'human_input') def = `${id}(("${label}"))`;
 
                 mm += `    ${def}\n`;
-
-                // Add click event class if needed
                 mm += `    class ${id} node-basic\n`;
             });
 
@@ -204,14 +425,11 @@
                 mm += `    ${s} -->${label} ${t}\n`;
             });
 
-            // Render
             els.graph.innerHTML = `<pre class="mermaid">${mm}</pre>`;
 
             const runMermaid = async () => {
                 try {
-                    await window.mermaid.run({
-                        nodes: document.querySelectorAll('.mermaid')
-                    });
+                    await window.mermaid.run({ nodes: document.querySelectorAll('.mermaid') });
                 } catch (err) {
                     console.error('Mermaid render error:', err);
                 }
@@ -220,7 +438,6 @@
             if (window.mermaid) {
                 runMermaid();
             } else {
-                // Poll for mermaid
                 const checkInterval = setInterval(() => {
                     if (window.mermaid) {
                         clearInterval(checkInterval);
@@ -230,53 +447,67 @@
             }
         }
 
-        // --- Logging ---
-        function handleEvent(event) {
-            // Visualize active node on graph
-            if (event.type === 'execution_started' || event.type === 'node_start') {
-                // Highlight node (requires parsing data to find node ID)
-                // For now just log
-            }
+        // --- Event Handling ---
+        let executionStartTime = null;
 
+        function handleEvent(event) {
             let msg = '';
             let type = 'info';
 
             switch (event.type) {
                 case 'execution_started':
-                    msg = `Started execution ${event.execution_id}`;
+                    msg = `🚀 Started execution ${event.execution_id}`;
+                    state.stats.total++;
+                    executionStartTime = Date.now();
+                    els.runBtn.classList.add('running-indicator');
                     break;
                 case 'execution_completed':
-                    msg = `Completed execution ${event.execution_id}`;
+                    msg = `✅ Completed execution ${event.execution_id}`;
                     type = 'success';
+                    state.stats.success++;
+                    if (executionStartTime) {
+                        state.stats.durations.push(Date.now() - executionStartTime);
+                    }
+                    els.runBtn.classList.remove('running-indicator');
                     break;
                 case 'execution_failed':
-                    msg = `Failed execution ${event.execution_id}: ${event.data.error}`;
+                    msg = `❌ Failed execution ${event.execution_id}: ${event.data?.error}`;
                     type = 'error';
+                    state.stats.failed++;
+                    els.runBtn.classList.remove('running-indicator');
+                    break;
+                case 'node_start':
+                    msg = `▶ Node started: ${event.data?.node_id}`;
+                    break;
+                case 'node_complete':
+                    msg = `✓ Node completed: ${event.data?.node_id}`;
+                    type = 'success';
                     break;
                 case 'state_changed':
-                    msg = `State change: ${event.data.key} = ...`;
+                    msg = `📝 State change: ${event.data?.key}`;
                     break;
                 default:
                     msg = `${event.type}`;
             }
 
-            if (event.data && Object.keys(event.data).length > 0) {
-                // Add details (collapsed or truncated)
-            }
-
+            updateStats();
             addLog(event.type, msg, type, event);
         }
 
         function addLog(category, message, level = 'info', rawEvent = null) {
+            // Remove placeholder if exists
+            const placeholder = els.logs.querySelector('.italic');
+            if (placeholder) placeholder.remove();
+
             const d = new Date();
             const time = d.toLocaleTimeString();
 
             const entry = document.createElement('div');
-            entry.className = `log-entry text-xs py-1 hover:bg-slate-800/50 transition-colors log-${level}`;
+            entry.className = `log-entry text-xs py-2 px-2 hover:bg-slate-800/50 transition-colors rounded-lg log-${level}`;
 
             const header = document.createElement('div');
-            header.className = "flex gap-2 items-center opacity-75 mb-0.5";
-            header.innerHTML = `<span class="text-[10px] text-slate-500">${time}</span> <span class="uppercase font-bold tracking-wider text-[10px]">${category}</span>`;
+            header.className = "flex gap-2 items-center opacity-75 mb-1";
+            header.innerHTML = `<span class="text-[10px] text-slate-500">${time}</span> <span class="uppercase font-bold tracking-wider text-[10px] px-1.5 py-0.5 bg-slate-800 rounded">${category}</span>`;
 
             const content = document.createElement('div');
             content.className = "text-slate-200 whitespace-pre-wrap";
@@ -285,16 +516,15 @@
             entry.appendChild(header);
             entry.appendChild(content);
 
-            // If raw event data, allow expanding
             if (rawEvent && rawEvent.data) {
                 const details = document.createElement('details');
-                details.className = "mt-1";
+                details.className = "mt-2";
                 const sum = document.createElement('summary');
                 sum.className = "cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none";
-                sum.textContent = "View Data";
+                sum.textContent = "📄 View Data";
 
                 const pre = document.createElement('pre');
-                pre.className = "mt-1 bg-slate-950 p-2 rounded overflow-auto max-h-40 text-[10px] text-slate-400";
+                pre.className = "mt-1 bg-slate-950 p-2 rounded-lg overflow-auto max-h-40 text-[10px] text-slate-400";
                 pre.textContent = JSON.stringify(rawEvent.data, null, 2);
 
                 details.appendChild(sum);
@@ -302,13 +532,48 @@
                 entry.appendChild(details);
             }
 
-            els.logs.prepend(entry); // Newest top
-
-            // Update count
-            els.logCount.textContent = `${els.logs.children.length} events`;
+            els.logs.prepend(entry);
+            els.logCount.textContent = `${els.logs.querySelectorAll('.log-entry').length} events`;
         }
 
-        // --- Interaction ---
+        function clearLogs() {
+            els.logs.innerHTML = '<div class="text-slate-600 italic text-xs text-center mt-10">Logs cleared</div>';
+            els.logCount.textContent = '0 events';
+        }
+
+        // --- Keyboard Shortcuts ---
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+R - Run agent
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                els.inputArea.classList.remove('hidden');
+                els.inputJson.focus();
+            }
+            // Ctrl+T - Toggle theme
+            if (e.ctrlKey && e.key === 't') {
+                e.preventDefault();
+                toggleTheme();
+            }
+            // Ctrl+L - Clear logs
+            if (e.ctrlKey && e.key === 'l') {
+                e.preventDefault();
+                clearLogs();
+            }
+            // ? - Show shortcuts
+            if (e.key === '?' && !e.ctrlKey && document.activeElement.tagName !== 'TEXTAREA') {
+                els.shortcutsHelp.classList.toggle('hidden');
+            }
+            // Esc - Close dialogs
+            if (e.key === 'Escape') {
+                els.inputArea.classList.add('hidden');
+                els.shortcutsHelp.classList.add('hidden');
+            }
+        });
+
+        // --- Event Listeners ---
+        els.themeToggle.addEventListener('click', toggleTheme);
+        els.clearLogs.addEventListener('click', clearLogs);
+
         els.runBtn.addEventListener('click', () => {
             els.inputArea.classList.remove('hidden');
             els.inputJson.focus();
@@ -324,11 +589,11 @@
             try {
                 inputData = JSON.parse(jsonStr);
             } catch (e) {
-                alert('Invalid JSON');
+                addLog('System', '❌ Invalid JSON input', 'error');
                 return;
             }
 
-            addLog('System', 'Sending run request...', 'info');
+            addLog('System', '📤 Sending run request...', 'info');
             els.inputArea.classList.add('hidden');
 
             try {
@@ -340,12 +605,12 @@
                 const data = await res.json();
 
                 if (data.status === 'started') {
-                    addLog('System', `Run queued: ${data.execution_id}`, 'success');
+                    addLog('System', `✅ Run queued: ${data.execution_id}`, 'success');
                 } else {
-                    addLog('System', `Failed to start: ${data.message}`, 'error');
+                    addLog('System', `❌ Failed to start: ${data.message}`, 'error');
                 }
             } catch (e) {
-                addLog('System', `Network error: ${e.message}`, 'error');
+                addLog('System', `❌ Network error: ${e.message}`, 'error');
             }
         });
 
