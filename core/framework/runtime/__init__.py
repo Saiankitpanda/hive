@@ -94,3 +94,27 @@ try:
     )
 except ImportError:
     pass
+
+# Streaming support
+try:
+    from framework.runtime.streaming import (  # noqa: F401
+        StreamingHandler,
+        StreamEvent,
+        StreamEventType,
+        StreamBuffer,
+        SSEStream,
+        WebSocketStream,
+    )
+
+    __all__.extend(
+        [
+            "StreamingHandler",
+            "StreamEvent",
+            "StreamEventType",
+            "StreamBuffer",
+            "SSEStream",
+            "WebSocketStream",
+        ]
+    )
+except ImportError:
+    pass
